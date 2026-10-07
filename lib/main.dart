@@ -36,10 +36,9 @@ class _FajrHomePageState extends State<FajrHomePage> {
   
   late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
-  bool isLoading = false;
 
-  // رابط بديل ومباشر للتلاوة
-  final String audioUrl = "https://server11.mp3quran.net/sds/001.mp3";
+  // رابط آمن ومباشر ومستقر بصيغة MP3 لتسجيل قصير
+  final String audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
   @override
   void initState() {
@@ -49,9 +48,6 @@ class _FajrHomePageState extends State<FajrHomePage> {
     _audioPlayer.onPlayerStateChanged.listen((state) {
       setState(() {
         isPlaying = state == PlayerState.playing;
-        if (state == PlayerState.playing || state == PlayerState.completed) {
-          isLoading = false;
-        }
       });
     });
   }
@@ -67,19 +63,15 @@ class _FajrHomePageState extends State<FajrHomePage> {
       if (isPlaying) {
         await _audioPlayer.stop();
       } else {
-        setState(() {
-          isLoading = true;
-        });
         await _audioPlayer.play(UrlSource(audioUrl));
       }
     } catch (e) {
       setState(() {
-        isLoading = false;
         isPlaying = false;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تشغيل الصوت، تأكد من الاتصال بالإنترنت')),
+          const SnackBar(content: Text('تعذر تشغيل الصوت، تحقق من الاتصال')),
         );
       }
     }
@@ -145,24 +137,13 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: isLoading ? null : togglePlayAudio,
-                icon: isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Icon(
-                        isPlaying ? Icons.stop : Icons.volume_up,
-                        color: Colors.white,
-                      ),
+                onPressed: togglePlayAudio,
+                icon: Icon(
+                  isPlaying ? Icons.stop : Icons.volume_up,
+                  color: Colors.white,
+                ),
                 label: Text(
-                  isLoading
-                      ? 'جاري التحميل...'
-                      : (isPlaying ? 'إيقاف التلاوة' : 'تجربة التلاوة الخاشعة'),
+                  isPlaying ? 'إيقاف الصوت' : 'تجربة الصوت الآن',
                   style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
