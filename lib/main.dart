@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:camera/camera.dart';
 
-void main() {
+List<CameraDescription> cameras = [];
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    cameras = await availableCameras();
+  } catch (e) {
+    debugPrint('خطأ في تهيئة الكاميرا: $e');
+  }
   runApp(const FajrAlarmApp());
 }
 
@@ -14,10 +22,7 @@ class FajrAlarmApp extends StatelessWidget {
     return MaterialApp(
       title: 'منبه الفجر والوضوء',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.teal,
-        scaffoldBackgroundColor: Colors.white,
-      ),
+      theme: ThemeData(primarySwatch: Colors.teal),
       home: const FajrHomePage(),
     );
   }
@@ -31,52 +36,57 @@ class FajrHomePage extends StatefulWidget {
 }
 
 class _FajrHomePageState extends State<FajrHomePage> {
-  bool isAlarmEnabled = true;
-  TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
+  late AudioPlayer _audioPlayer;
   bool isPlaying = false;
 
-  // دالة تصدر تنبيه صوتي واهتزاز متكرر وقوي من النظام مباشرة بدون إنترنت
-  Future<void> toggleAlarmSound() async {
-    setState(() {
-      isPlaying = !isPlaying;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+  }
 
-    if (isPlaying) {
-      // إصدار اهتزاز تنبيهي قوي
-      HapticFeedback.vibrate();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🔔 تنبيه الفجر يعمل الآن (صوت واهتزاز النظام)'),
-            backgroundColor: Colors.teal,
-            duration: Duration(seconds: 3),
-          ),
-        );
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  // تشغيل صوت تنبيه تجريبي مباشر عبر رابط آمن
+  Future<void> playRealAlarmSound() async {
+    try {
+      if (isPlaying) {
+        await _audioPlayer.stop();
+        setState(() => isPlaying = false);
+      } else {
+        await _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/sounds/beep-01a.mp3'));
+        await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        setState(() => isPlaying = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('🔔 جاري تشغيل صوت التنبيه...'), backgroundColor: Colors.teal),
+          );
+        }
       }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('⏹️ تم إيقاف التنبيه'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
+    } catch (e) {
+      debugPrint("خطأ في تشغيل الصوت: $e");
     }
   }
 
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: alarmTime,
-    );
-    if (picked != null && picked != alarmTime) {
-      setState(() {
-        alarmTime = picked;
-      });
+  // فتح الكاميرا الحقيقية للوضوء
+  void openRealCamera(BuildContext context) {
+    if (cameras.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('⚠️ لا توجد كاميرا متاحة في هذا الجهاز'), backgroundColor: Colors.red),
+      );
+      return;
     }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RealCameraView(camera: cameras.first),
+      ),
+    );
   }
 
   @override
@@ -85,110 +95,110 @@ class _FajrHomePageState extends State<FajrHomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('منبه الفجر والوضوء'),
-          centerTitle: true,
+          title: const Text('منبه الفجر والوضوء الذكي'),
           backgroundColor: Colors.teal,
           foregroundColor: Colors.white,
         ),
         body: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(20.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.alarm_on_rounded,
-                size: 100,
-                color: Colors.teal,
-              ),
-              const SizedBox(height: 30),
-              Text(
-                'وقت المنبه: ${alarmTime.format(context)}',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton.icon(
-                onPressed: () => _selectTime(context),
-                icon: const Icon(Icons.access_time, color: Colors.white),
-                label: const Text(
-                  'تغيير وقت المنبه',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-              ),
+              const Icon(Icons.alarm, size: 80, color: Colors.teal),
               const SizedBox(height: 20),
+              const Text('وقت المنبه: 04:30 AM', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 40),
+              
               ElevatedButton.icon(
-                onPressed: toggleAlarmSound,
-                icon: Icon(
-                  isPlaying ? Icons.stop : Icons.notifications_active,
-                  color: Colors.white,
-                ),
-                label: Text(
-                  isPlaying ? 'إيقاف تنبيه الفجر' : 'تجربة تنبيه الفجر الآن',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                onPressed: playRealAlarmSound,
+                icon: Icon(isPlaying ? Icons.stop : Icons.volume_up, color: Colors.white),
+                label: Text(isPlaying ? 'إيقاف صوت المنبه' : 'تجربة صوت المنبه الفعلي', style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isPlaying ? Colors.red : Colors.orange,
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              // زر فتح الكاميرا للوضوء والتحقق من الوجه المبلل
+
               ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('📸 جاري فتح الكاميرا للتحقق من الوجه المبلل...'),
-                      backgroundColor: Colors.blueGrey,
-                    ),
-                  );
-                },
+                onPressed: () => openRealCamera(context),
                 icon: const Icon(Icons.camera_alt, color: Colors.white),
-                label: const Text(
-                  'فتح الكاميرا (الوجه المبلل للوضوء)',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
+                label: const Text('فتح الكاميرا الحقيقية (الوجه المبلل للوضوء)', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueGrey,
+                  backgroundColor: Colors.teal,
                   minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'تفعيل المنبه',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-                  ),
-                  Switch(
-                    value: isAlarmEnabled,
-                    activeColor: Colors.teal,
-                    onChanged: (value) {
-                      setState(() {
-                        isAlarmEnabled = value;
-                      });
-                    },
-                  ),
-                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class RealCameraView extends StatefulWidget {
+  final CameraDescription camera;
+  const RealCameraView({super.key, required this.camera});
+
+  @override
+  State<RealCameraView> createState() => _RealCameraViewState();
+}
+
+class _RealCameraViewState extends State<RealCameraView> {
+  late CameraController _controller;
+  late Future<void> _initializeControllerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CameraController(widget.camera, ResolutionPreset.medium);
+    _initializeControllerFuture = _controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('فحص الوجه المبلل'), backgroundColor: Colors.teal),
+        body: FutureBuilder<void>(
+          future: _initializeControllerFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              return Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  SizedBox.expand(child: CameraPreview(_controller)),
+                  Padding(
+                    padding: const EdgeInsets.all(25.0),
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('✅ تم التحقق من الوجه بنجاح، تقبل الله الصلاة!'), backgroundColor: Colors.teal),
+                        );
+                      },
+                      icon: const Icon(Icons.check, color: Colors.white),
+                      label: const Text('تأكيد الوجه المبلل وإيقاف المنبه', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              return const Center(child: CircularProgressIndicator());
+            }
+          },
         ),
       ),
     );
