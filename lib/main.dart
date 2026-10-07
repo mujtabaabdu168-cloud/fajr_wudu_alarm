@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,25 +33,47 @@ class FajrHomePage extends StatefulWidget {
 class _FajrHomePageState extends State<FajrHomePage> {
   bool isAlarmEnabled = true;
   TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
+  
+  late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
 
-  // دالة تصدر اهتزازاً ونغمة نظام فورية مضمونة 100% بدون إنترنت
-  Future<void> togglePlayAudio() async {
-    try {
-      setState(() {
-        isPlaying = !isPlaying;
-      });
+  // رابط مباشر لتلاوة قرآنية هادئة ومباركة (صيغة MP3 مستقرة)
+  // تم اختيار تلاوة خفيفة وموثوقة لتعمل بسرعة فائقة
+  final String quranAudioUrl = "https://server8.mp3quran.net/afs/001.mp3"; // سورة الفاتحة بصوت الشيخ عبد الباسط عبد الصمد أو العفاسي (مستقرة وسريعة)
 
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+    
+    // مراقبة حالة الصوت لتحديث شكل الزر تلقائياً
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) {
+        setState(() {
+          isPlaying = state == PlayerState.playing;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  // دالة تشغيل وإيقاف تلاوة القرآن الكريم
+  Future<void> toggleQuranAlarm() async {
+    try {
       if (isPlaying) {
-        // اهتزاز الهاتف لتنبيه المستخدم
-        await HapticFeedback.heavyImpact();
-        
+        await _audioPlayer.stop();
+        setState(() => isPlaying = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🔔 تم تشغيل تنبيه المنبه بنجاح (محلياً)'),
-              backgroundColor: Colors.teal,
-              duration: Duration(seconds: 2),
+              content: Text('⏹️ تم إيقاف التلاوة'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 1),
             ),
           );
         }
@@ -59,17 +81,22 @@ class _FajrHomePageState extends State<FajrHomePage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('⏹️ تم إيقاف المنبه'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 1),
+              content: Text('📖 جاري تشغيل تلاوة القرآن الكريم...'),
+              backgroundColor: Colors.teal,
+              duration: Duration(seconds: 2),
             ),
           );
         }
+        await _audioPlayer.play(UrlSource(quranAudioUrl));
+        setState(() => isPlaying = true);
       }
     } catch (e) {
-      setState(() {
-        isPlaying = false;
-      });
+      setState(() => isPlaying = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر التشغيل، تحقق من الاتصال: $e')),
+        );
+      }
     }
   }
 
@@ -102,7 +129,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
-                Icons.alarm_rounded,
+                Icons.menu_book_rounded,
                 size: 100,
                 color: Colors.teal,
               ),
@@ -133,13 +160,13 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: togglePlayAudio,
+                onPressed: toggleQuranAlarm,
                 icon: Icon(
-                  isPlaying ? Icons.stop : Icons.notifications_active,
+                  isPlaying ? Icons.stop : Icons.volume_up,
                   color: Colors.white,
                 ),
                 label: Text(
-                  isPlaying ? 'إيقاف التنبيه' : 'تجربة تنبيه المنبه',
+                  isPlaying ? 'إيقاف تلاوة القرآن' : 'تجربة تلاوة القرآن الآن',
                   style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
