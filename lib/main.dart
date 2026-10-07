@@ -37,19 +37,12 @@ class _FajrHomePageState extends State<FajrHomePage> {
   late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
 
-  // رابط آمن ومباشر ومستقر بصيغة MP3 لتسجيل قصير
   final String audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
-    
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() {
-        isPlaying = state == PlayerState.playing;
-      });
-    });
   }
 
   @override
@@ -62,8 +55,24 @@ class _FajrHomePageState extends State<FajrHomePage> {
     try {
       if (isPlaying) {
         await _audioPlayer.stop();
+        setState(() {
+          isPlaying = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم إيقاف الصوت')),
+          );
+        }
       } else {
+        // إظهار رسالة بأن المحاولة جارية
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('جاري بدء تشغيل الصوت...')),
+        );
+        
         await _audioPlayer.play(UrlSource(audioUrl));
+        setState(() {
+          isPlaying = true;
+        });
       }
     } catch (e) {
       setState(() {
@@ -71,7 +80,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تشغيل الصوت، تحقق من الاتصال')),
+          SnackBar(content: Text('خطأ في التشغيل: $e')),
         );
       }
     }
