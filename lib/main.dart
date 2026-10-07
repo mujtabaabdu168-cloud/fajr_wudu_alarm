@@ -1,50 +1,77 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const FajrAlarmApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class FajrAlarmApp extends StatelessWidget {
+  const FajrAlarmApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'منبه الفجر والوضوء',
-      // دعم اللغة العربية بشكل كامل
-      locale: const Locale('ar', 'AR'),
-      supportedLocales: const [
-        Locale('ar', 'AR'),
-        Locale('en', 'US'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.teal,
-        fontFamily: 'Cairo', // إن أمكن أو الخط الافتراضي
+        scaffoldBackgroundColor: Colors.white,
       ),
-      home: const HomeScreen(),
+      home: const FajrHomePage(),
     );
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class FajrHomePage extends StatefulWidget {
+  const FajrHomePage({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<FajrHomePage> createState() => _FajrHomePageState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  bool isAlarmActive = true;
+class _FajrHomePageState extends State<FajrHomePage> {
+  bool isAlarmEnabled = true;
   TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
+  
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool isPlaying = false;
 
-  // دالة اختيار الوقت باللغة العربية
+  // رابط تلاوة خاشعة للاختبار
+  final String audioUrl = "https://server8.mp3quran.net/afs/001.mp3";
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> togglePlayAudio() async {
+    try {
+      if (isPlaying) {
+        await _audioPlayer.stop();
+        setState(() {
+          isPlaying = false;
+        });
+      } else {
+        await _audioPlayer.play(UrlSource(audioUrl));
+        setState(() {
+          isPlaying = true;
+        });
+        
+        _audioPlayer.onPlayerComplete.listen((event) {
+          setState(() {
+            isPlaying = false;
+          });
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('حدث خطأ أثناء تشغيل الصوت')),
+      );
+    }
+  }
+
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -66,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // اتجاه التطبيق من اليمين لليسار
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('منبه الفجر والوضوء'),
@@ -75,60 +102,77 @@ class _HomeScreenState extends State<HomeScreen> {
           foregroundColor: Colors.white,
         ),
         body: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Icon(
-                Icons.access_alarm,
+                Icons.alarm_rounded,
                 size: 100,
                 color: Colors.teal,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
               Text(
                 'وقت المنبه: ${alarmTime.format(context)}',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 40),
               ElevatedButton.icon(
                 onPressed: () => _selectTime(context),
-                icon: const Icon(Icons.timer),
-                label: const Text('تغيير وقت المنبه', style: TextStyle(fontSize: 18)),
+                icon: const Icon(Icons.access_time, color: Colors.white),
+                label: const Text(
+                  'تغيير وقت المنبه',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('جارٍ تجهيز الآيات الخاشعة للفجر...')),
-                  );
-                },
-                icon: const Icon(Icons.volume_up),
-                label: const Text('تجربة التلاوة الخاشعة', style: TextStyle(fontSize: 18)),
+                onPressed: togglePlayAudio,
+                icon: Icon(
+                  isPlaying ? Icons.stop : Icons.volume_up,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  isPlaying ? 'إيقاف التلاوة' : 'تجربة التلاوة الخاشعة',
+                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[800],
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  backgroundColor: Colors.orange,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
                 ),
               ),
-              const SizedBox(height: 30),
-              SwitchListTile(
-                title: const Text(
-                  'تفعيل المنبه',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                ),
-                value: isAlarmActive,
-                activeColor: Colors.teal,
-                onChanged: (bool value) {
-                  setState(() {
-                    isAlarmActive = value;
-                  });
-                },
+              const SizedBox(height: 40),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'تفعيل المنبه',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                  ),
+                  Switch(
+                    value: isAlarmEnabled,
+                    activeColor: Colors.teal,
+                    onChanged: (value) {
+                      setState(() {
+                        isAlarmEnabled = value;
+                      });
+                    },
+                  ),
+                ],
               ),
             ],
           ),
