@@ -37,18 +37,21 @@ class _FajrHomePageState extends State<FajrHomePage> {
   late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
 
-  // رابط صوتي صغير جداً ومباشر (ملف WAV خفيف للغاية وسريع التحميل)
-  final String audioUrl = "https://www.soundjay.com/buttons/sounds/button-16.mp3";
+  // رابط صوتي مباشر ومستقر 100%
+  final String audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
   @override
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
     
+    // مراقبة حالة المشغل وتحديث الشاشة فوراً
     _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() {
-        isPlaying = state == PlayerState.playing;
-      });
+      if (mounted) {
+        setState(() {
+          isPlaying = state == PlayerState.playing;
+        });
+      }
     });
   }
 
@@ -58,27 +61,28 @@ class _FajrHomePageState extends State<FajrHomePage> {
     super.dispose();
   }
 
+  // دالة تشغيل مضمونة مع التقاط الأخطاء وعرضها للمستخدم
   Future<void> togglePlayAudio() async {
     try {
       if (isPlaying) {
         await _audioPlayer.stop();
-        setState(() {
-          isPlaying = false;
-        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم إيقاف الصوت بنجاح')),
+          );
+        }
       } else {
-        // تشغيل مباشر بدون انتظار طويل
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('جاري الاتصال وتشغيل الصوت...')),
+          );
+        }
         await _audioPlayer.play(UrlSource(audioUrl));
-        setState(() {
-          isPlaying = true;
-        });
       }
     } catch (e) {
-      setState(() {
-        isPlaying = false;
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تشغيل الصوت، تأكد من الاتصال')),
+          SnackBar(content: Text('خطأ تقني: $e')),
         );
       }
     }
