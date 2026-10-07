@@ -79,6 +79,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 foregroundColor: Colors.white,
               ),
             ),
+            const SizedBox(height: 20),
+            // زر تجربة التلاوة الخاشعة (قريباً سنربطه بالصوت)
+            ElevatedButton.icon(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('جارٍ تجهيز الآيات الخاشعة للفجر...')),
+                );
+              },
+              icon: const Icon(Icons.volume_up),
+              label: const Text('تجربة التلاوة الخاشعة'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
             const SizedBox(height: 30),
             SwitchListTile(
               title: const Text(
