@@ -44,8 +44,9 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAlignment.center,
-          children: [
+          crossAxisAlignment: CrossAxisAlignment.center,
+,
+          8: [
             const Icon(
               Icons.access_alarm,
               size: 100,
