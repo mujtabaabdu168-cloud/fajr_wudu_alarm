@@ -30,11 +30,11 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
 
-    - name: Build APK (Release)
-      run: flutter build apk --release --no-tree-shake-icons
+    - name: Build APK (Debug Verbose)
+      run: flutter build apk --debug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app-release
-        path: build/app/outputs/flutter-apk/app-release.apk
+        name: app-debug
+        path: build/app/outputs/flutter-apk/app-debug.apk
