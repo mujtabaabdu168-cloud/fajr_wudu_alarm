@@ -38,7 +38,7 @@ class FajrHomePage extends StatefulWidget {
 class _FajrHomePageState extends State<FajrHomePage> {
   late AudioPlayer _audioPlayer;
   bool isPlaying = false;
-  TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30); // الوقت الافتراضي 4:30 AM
+  TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
 
   @override
   void initState() {
@@ -52,28 +52,40 @@ class _FajrHomePageState extends State<FajrHomePage> {
     super.dispose();
   }
 
-  // تشغيل صوت التنبيه الفعلي
+  // تشغيل تلاوة قرآنية مباركة بصوت عذب للتنبيه
   Future<void> playRealAlarmSound() async {
     try {
       if (isPlaying) {
         await _audioPlayer.stop();
         setState(() => isPlaying = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('⏹️ تم إيقاف تلاوة القرآن'), backgroundColor: Colors.red),
+          );
+        }
       } else {
-        await _audioPlayer.play(UrlSource('https://www.soundjay.com/buttons/sounds/beep-01a.mp3'));
+        // رابط تلاوة قرآنية هادئة ومستقرة
+        await _audioPlayer.setSource(UrlSource('https://server8.mp3quran.net/afs/001.mp3')); // سورة الفاتحة بصوت عبد الرحمن السديس كمثال مبارك
+        await _audioPlayer.resume();
         await _audioPlayer.setReleaseMode(ReleaseMode.loop);
         setState(() => isPlaying = true);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('🔔 جاري تشغيل صوت المنبه...'), backgroundColor: Colors.teal),
+            const SnackBar(content: Text('📖 جاري تشغيل تلاوة القرآن الكريم...'), backgroundColor: Colors.teal),
           );
         }
       }
     } catch (e) {
       debugPrint("خطأ في تشغيل الصوت: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('⚠️ تعذر تشغيل الصوت تأكد من الانترنت: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
-  // نافذة اختيار وتغيير وقت المنبه الحقيقية
+  // نافذة اختيار الوقت
   Future<void> selectAlarmTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -106,7 +118,6 @@ class _FajrHomePageState extends State<FajrHomePage> {
       return;
     }
 
-    // البحث عن الكاميرا الأمامية (Front Camera)
     CameraDescription selectedCamera = cameras.first;
     for (var camera in cameras) {
       if (camera.lensDirection == CameraLensDirection.front) {
@@ -146,7 +157,6 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ),
               const SizedBox(height: 40),
 
-              // 1. زر تغيير وقت المنبه الحقيقي
               ElevatedButton.icon(
                 onPressed: () => selectAlarmTime(context),
                 icon: const Icon(Icons.access_time, color: Colors.white),
@@ -158,19 +168,17 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ),
               const SizedBox(height: 15),
               
-              // 2. زر تشغيل/إيقاف الصوت الفعلي
               ElevatedButton.icon(
                 onPressed: playRealAlarmSound,
-                icon: Icon(isPlaying ? Icons.stop : Icons.volume_up, color: Colors.white),
-                label: Text(isPlaying ? 'إيقاف صوت المنبه' : 'تجربة صوت المنبه الفعلي', style: const TextStyle(color: Colors.white)),
+                icon: Icon(isPlaying ? Icons.stop : Icons.menu_book, color: Colors.white),
+                label: Text(isPlaying ? 'إيقاف تلاوة القرآن' : 'تشغيل تلاوة القرآن للتنبيه', style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isPlaying ? Colors.red : Colors.orange,
+                  backgroundColor: isPlaying ? Colors.red : Colors.green.shade700,
                   minimumSize: const Size(double.infinity, 50),
                 ),
               ),
               const SizedBox(height: 15),
 
-              // 3. زر فتح الكاميرا الأمامية الحقيقية للوضوء
               ElevatedButton.icon(
                 onPressed: () => openFrontCamera(context),
                 icon: const Icon(Icons.camera_front, color: Colors.white),
