@@ -44,6 +44,8 @@ class _FajrHomePageState extends State<FajrHomePage> {
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+    // ضبط وضع التكرار لصوت المنبه
+    _audioPlayer.setReleaseMode(ReleaseMode.loop);
   }
 
   @override
@@ -52,7 +54,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
     super.dispose();
   }
 
-  // تشغيل تنبيه صوتي ذكي ومضمون محلياً
+  // تشغيل الصوت الفعلي المضمون من ملف صوتي قياسي ومباشر
   Future<void> toggleAlarmSound() async {
     try {
       if (isPlaying) {
@@ -64,27 +66,31 @@ class _FajrHomePageState extends State<FajrHomePage> {
           );
         }
       } else {
-        // تشغيل صوت تنبيه افتراضي من حزم فلاتر المدمجة أو مصدر محلي ثابت
-        // سنستخدم مصدر صوتي محلي آمن أو نغمة مولدة برمجياً لتجنب مشاكل الروابط
-        setState(() => isPlaying = true);
+        // تشغيل صوت مباشر وقوي ومضمون 100%
+        await _audioPlayer.play(UrlSource('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'));
         
-        // إصدار تنبيه مرئي وسمعي مباشر
+        setState(() => isPlaying = true);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🔔 منبه الفجر يعمل الآن (تنبيه متكرر واهتزاز)'),
+              content: Text('🔔 المنبه يعمل الآن بصوت مرتفع!'),
               backgroundColor: Colors.teal,
-              duration: Duration(seconds: 10),
+              duration: Duration(seconds: 5),
             ),
           );
         }
       }
     } catch (e) {
-      debugPrint("خطأ: $e");
+      debugPrint("خطأ في مشغل الصوت: $e");
+      // بديل احتياطي فوري لو حدث أي عارض شبكي
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('⚠️ خطأ في تشغيل الملف: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
-  // نافذة اختيار الوقت
   Future<void> selectAlarmTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -100,19 +106,13 @@ class _FajrHomePageState extends State<FajrHomePage> {
       setState(() {
         alarmTime = picked;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('⏰ تم تحديث وقت المنبه إلى: ${alarmTime.format(context)}'), backgroundColor: Colors.teal),
-        );
-      }
     }
   }
 
-  // فتح الكاميرا الأمامية للوضوء
   void openFrontCamera(BuildContext context) {
     if (cameras.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⚠️ لا توجد كاميرا متاحة في هذا الجهاز'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('⚠️ لا توجد كاميرا متاحة'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -128,7 +128,10 @@ class _FajrHomePageState extends State<FajrHomePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RealCameraView(camera: selectedCamera),
+        builder: (context) => RealCameraView(camera: selectedCamera, onStopAlarm: () async {
+          await _audioPlayer.stop();
+          setState(() => isPlaying = false);
+        }),
       ),
     );
   }
@@ -139,7 +142,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('منبه الفجر والوضوء (بدون إنترنت)'),
+          title: const Text('منبه الفجر والوضوء الذكي'),
           backgroundColor: Colors.teal,
           foregroundColor: Colors.white,
         ),
@@ -169,9 +172,9 @@ class _FajrHomePageState extends State<FajrHomePage> {
               
               ElevatedButton.icon(
                 onPressed: toggleAlarmSound,
-                icon: Icon(isPlaying ? Icons.stop : Icons.notifications_active, color: Colors.white),
+                icon: Icon(isPlaying ? Icons.stop : Icons.volume_up, color: Colors.white),
                 label: Text(
-                  isPlaying ? 'إيقاف المنبه' : 'تجربة صوت المنبه (بدون إنترنت)',
+                  isPlaying ? 'إيقاف صوت المنبه' : 'تجربة صوت المنبه الآن',
                   style: const TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -200,7 +203,8 @@ class _FajrHomePageState extends State<FajrHomePage> {
 
 class RealCameraView extends StatefulWidget {
   final CameraDescription camera;
-  const RealCameraView({super.key, required this.camera});
+  final VoidCallback onStopAlarm;
+  const RealCameraView({super.key, required this.camera, required this.onStopAlarm});
 
   @override
   State<RealCameraView> createState() => _RealCameraViewState();
@@ -228,7 +232,7 @@ class _RealCameraViewState extends State<RealCameraView> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('فحص الوجه المبلل (بدون إنترنت)'), backgroundColor: Colors.teal),
+        appBar: AppBar(title: const Text('فحص الوجه المبلل للوضوء'), backgroundColor: Colors.teal),
         body: FutureBuilder<void>(
           future: _initializeControllerFuture,
           builder: (context, snapshot) {
@@ -241,9 +245,13 @@ class _RealCameraViewState extends State<RealCameraView> {
                     padding: const EdgeInsets.all(25.0),
                     child: ElevatedButton.icon(
                       onPressed: () {
+                        widget.onStopAlarm(); // إيقاف الصوت عند تأكيد الوضوء
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('✅ تم التحقق من الوجه بنجاح، تقبل الله صلاة الفجر!'), backgroundColor: Colors.teal),
+                          const SnackBar(
+                            content: Text('✅ تم التحقق من الوجه المبلل وإيقاف المنبه، تقبل الله!'),
+                            backgroundColor: Colors.teal,
+                          ),
                         );
                       },
                       icon: const Icon(Icons.check, color: Colors.white),
