@@ -38,6 +38,7 @@ class FajrHomePage extends StatefulWidget {
 class _FajrHomePageState extends State<FajrHomePage> {
   late AudioPlayer _audioPlayer;
   bool isPlaying = false;
+  TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30); // الوقت الافتراضي 4:30 AM
 
   @override
   void initState() {
@@ -51,7 +52,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
     super.dispose();
   }
 
-  // تشغيل صوت تنبيه تجريبي مباشر عبر رابط آمن
+  // تشغيل صوت التنبيه الفعلي
   Future<void> playRealAlarmSound() async {
     try {
       if (isPlaying) {
@@ -63,7 +64,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
         setState(() => isPlaying = true);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('🔔 جاري تشغيل صوت التنبيه...'), backgroundColor: Colors.teal),
+            const SnackBar(content: Text('🔔 جاري تشغيل صوت المنبه...'), backgroundColor: Colors.teal),
           );
         }
       }
@@ -72,8 +73,32 @@ class _FajrHomePageState extends State<FajrHomePage> {
     }
   }
 
-  // فتح الكاميرا الحقيقية للوضوء
-  void openRealCamera(BuildContext context) {
+  // نافذة اختيار وتغيير وقت المنبه الحقيقية
+  Future<void> selectAlarmTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: alarmTime,
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != alarmTime) {
+      setState(() {
+        alarmTime = picked;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('⏰ تم تحديث وقت المنبه إلى: ${alarmTime.format(context)}'), backgroundColor: Colors.teal),
+        );
+      }
+    }
+  }
+
+  // فتح الكاميرا الأمامية حصرياً للوضوء
+  void openFrontCamera(BuildContext context) {
     if (cameras.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('⚠️ لا توجد كاميرا متاحة في هذا الجهاز'), backgroundColor: Colors.red),
@@ -81,10 +106,19 @@ class _FajrHomePageState extends State<FajrHomePage> {
       return;
     }
 
+    // البحث عن الكاميرا الأمامية (Front Camera)
+    CameraDescription selectedCamera = cameras.first;
+    for (var camera in cameras) {
+      if (camera.lensDirection == CameraLensDirection.front) {
+        selectedCamera = camera;
+        break;
+      }
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RealCameraView(camera: cameras.first),
+        builder: (context) => RealCameraView(camera: selectedCamera),
       ),
     );
   }
@@ -106,9 +140,25 @@ class _FajrHomePageState extends State<FajrHomePage> {
             children: [
               const Icon(Icons.alarm, size: 80, color: Colors.teal),
               const SizedBox(height: 20),
-              const Text('وقت المنبه: 04:30 AM', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(
+                'وقت المنبه: ${alarmTime.format(context)}',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 40),
+
+              // 1. زر تغيير وقت المنبه الحقيقي
+              ElevatedButton.icon(
+                onPressed: () => selectAlarmTime(context),
+                icon: const Icon(Icons.access_time, color: Colors.white),
+                label: const Text('تغيير وقت المنبه', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+              ),
+              const SizedBox(height: 15),
               
+              // 2. زر تشغيل/إيقاف الصوت الفعلي
               ElevatedButton.icon(
                 onPressed: playRealAlarmSound,
                 icon: Icon(isPlaying ? Icons.stop : Icons.volume_up, color: Colors.white),
@@ -118,14 +168,15 @@ class _FajrHomePageState extends State<FajrHomePage> {
                   minimumSize: const Size(double.infinity, 50),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
 
+              // 3. زر فتح الكاميرا الأمامية الحقيقية للوضوء
               ElevatedButton.icon(
-                onPressed: () => openRealCamera(context),
-                icon: const Icon(Icons.camera_alt, color: Colors.white),
-                label: const Text('فتح الكاميرا الحقيقية (الوجه المبلل للوضوء)', style: TextStyle(color: Colors.white)),
+                onPressed: () => openFrontCamera(context),
+                icon: const Icon(Icons.camera_front, color: Colors.white),
+                label: const Text('فتح الكاميرا الأمامية (الوجه المبلل للوضوء)', style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: Colors.teal.shade700,
                   minimumSize: const Size(double.infinity, 50),
                 ),
               ),
@@ -167,7 +218,7 @@ class _RealCameraViewState extends State<RealCameraView> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(title: const Text('فحص الوجه المبلل'), backgroundColor: Colors.teal),
+        appBar: AppBar(title: const Text('فحص الوجه المبلل (الكاميرا الأمامية)'), backgroundColor: Colors.teal),
         body: FutureBuilder<void>(
           future: _initializeControllerFuture,
           builder: (context, snapshot) {
