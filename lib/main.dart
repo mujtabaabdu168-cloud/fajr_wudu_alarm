@@ -34,11 +34,27 @@ class _FajrHomePageState extends State<FajrHomePage> {
   bool isAlarmEnabled = true;
   TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
   
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
+  bool isLoading = false;
 
-  // رابط تلاوة خاشعة للاختبار
-  final String audioUrl = "https://server8.mp3quran.net/afs/001.mp3";
+  // رابط بديل ومباشر للتلاوة
+  final String audioUrl = "https://server11.mp3quran.net/sds/001.mp3";
+
+  @override
+  void initState() {
+    super.initState();
+    _audioPlayer = AudioPlayer();
+    
+    _audioPlayer.onPlayerStateChanged.listen((state) {
+      setState(() {
+        isPlaying = state == PlayerState.playing;
+        if (state == PlayerState.playing || state == PlayerState.completed) {
+          isLoading = false;
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -50,25 +66,20 @@ class _FajrHomePageState extends State<FajrHomePage> {
     try {
       if (isPlaying) {
         await _audioPlayer.stop();
-        setState(() {
-          isPlaying = false;
-        });
       } else {
-        await _audioPlayer.play(UrlSource(audioUrl));
         setState(() {
-          isPlaying = true;
+          isLoading = true;
         });
-        
-        _audioPlayer.onPlayerComplete.listen((event) {
-          setState(() {
-            isPlaying = false;
-          });
-        });
+        await _audioPlayer.play(UrlSource(audioUrl));
       }
     } catch (e) {
+      setState(() {
+        isLoading = false;
+        isPlaying = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء تشغيل الصوت')),
+          const SnackBar(content: Text('تعذر تشغيل الصوت، تأكد من الاتصال بالإنترنت')),
         );
       }
     }
@@ -134,13 +145,24 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: togglePlayAudio,
-                icon: Icon(
-                  isPlaying ? Icons.stop : Icons.volume_up,
-                  color: Colors.white,
-                ),
+                onPressed: isLoading ? null : togglePlayAudio,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Icon(
+                        isPlaying ? Icons.stop : Icons.volume_up,
+                        color: Colors.white,
+                      ),
                 label: Text(
-                  isPlaying ? 'إيقاف التلاوة' : 'تجربة التلاوة الخاشعة',
+                  isLoading
+                      ? 'جاري التحميل...'
+                      : (isPlaying ? 'إيقاف التلاوة' : 'تجربة التلاوة الخاشعة'),
                   style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
