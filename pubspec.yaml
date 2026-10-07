@@ -1,5 +1,5 @@
 name: fajr_wudu_alarm
-description: "تطبيق منبه الفجر الذكي عبر التحقق من الوضوء"
+description: "الفجر الذكي عبر التحقق من الوضوء"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   audioplayers: ^6.0.0
+  camera: ^0.11.0+2
+  path_provider: ^2.1.2
   cupertino_icons: ^1.0.6
 
 dev_dependencies:
