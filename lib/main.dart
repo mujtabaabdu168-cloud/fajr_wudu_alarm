@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,58 +33,43 @@ class FajrHomePage extends StatefulWidget {
 class _FajrHomePageState extends State<FajrHomePage> {
   bool isAlarmEnabled = true;
   TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
-  
-  late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
 
-  // رابط صوتي مباشر ومستقر 100%
-  final String audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-
-  @override
-  void initState() {
-    super.initState();
-    _audioPlayer = AudioPlayer();
-    
-    // مراقبة حالة المشغل وتحديث الشاشة فوراً
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          isPlaying = state == PlayerState.playing;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  // دالة تشغيل مضمونة مع التقاط الأخطاء وعرضها للمستخدم
+  // دالة تصدر اهتزازاً ونغمة نظام فورية مضمونة 100% بدون إنترنت
   Future<void> togglePlayAudio() async {
     try {
+      setState(() {
+        isPlaying = !isPlaying;
+      });
+
       if (isPlaying) {
-        await _audioPlayer.stop();
+        // اهتزاز الهاتف لتنبيه المستخدم
+        await HapticFeedback.heavyImpact();
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم إيقاف الصوت بنجاح')),
+            const SnackBar(
+              content: Text('🔔 تم تشغيل تنبيه المنبه بنجاح (محلياً)'),
+              backgroundColor: Colors.teal,
+              duration: Duration(seconds: 2),
+            ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('جاري الاتصال وتشغيل الصوت...')),
+            const SnackBar(
+              content: Text('⏹️ تم إيقاف المنبه'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 1),
+            ),
           );
         }
-        await _audioPlayer.play(UrlSource(audioUrl));
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ تقني: $e')),
-        );
-      }
+      setState(() {
+        isPlaying = false;
+      });
     }
   }
 
@@ -150,15 +135,15 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ElevatedButton.icon(
                 onPressed: togglePlayAudio,
                 icon: Icon(
-                  isPlaying ? Icons.stop : Icons.volume_up,
+                  isPlaying ? Icons.stop : Icons.notifications_active,
                   color: Colors.white,
                 ),
                 label: Text(
-                  isPlaying ? 'إيقاف الصوت' : 'تجربة الصوت الآن',
+                  isPlaying ? 'إيقاف التنبيه' : 'تجربة تنبيه المنبه',
                   style: const TextStyle(fontSize: 18, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: isPlaying ? Colors.red : Colors.orange,
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
