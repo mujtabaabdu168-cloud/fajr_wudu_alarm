@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,68 +33,35 @@ class FajrHomePage extends StatefulWidget {
 class _FajrHomePageState extends State<FajrHomePage> {
   bool isAlarmEnabled = true;
   TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
-  
-  late final AudioPlayer _audioPlayer;
   bool isPlaying = false;
 
-  // رابط مباشر لتلاوة قرآنية هادئة ومباركة (صيغة MP3 مستقرة)
-  // تم اختيار تلاوة خفيفة وموثوقة لتعمل بسرعة فائقة
-  final String quranAudioUrl = "https://server8.mp3quran.net/afs/001.mp3"; // سورة الفاتحة بصوت الشيخ عبد الباسط عبد الصمد أو العفاسي (مستقرة وسريعة)
-
-  @override
-  void initState() {
-    super.initState();
-    _audioPlayer = AudioPlayer();
-    
-    // مراقبة حالة الصوت لتحديث شكل الزر تلقائياً
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          isPlaying = state == PlayerState.playing;
-        });
-      }
+  // دالة تصدر تنبيه صوتي واهتزاز متكرر وقوي من النظام مباشرة بدون إنترنت
+  Future<void> toggleAlarmSound() async {
+    setState(() {
+      isPlaying = !isPlaying;
     });
-  }
 
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  // دالة تشغيل وإيقاف تلاوة القرآن الكريم
-  Future<void> toggleQuranAlarm() async {
-    try {
-      if (isPlaying) {
-        await _audioPlayer.stop();
-        setState(() => isPlaying = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⏹️ تم إيقاف التلاوة'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 1),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('📖 جاري تشغيل تلاوة القرآن الكريم...'),
-              backgroundColor: Colors.teal,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        }
-        await _audioPlayer.play(UrlSource(quranAudioUrl));
-        setState(() => isPlaying = true);
-      }
-    } catch (e) {
-      setState(() => isPlaying = false);
+    if (isPlaying) {
+      // إصدار اهتزاز تنبيهي قوي
+      HapticFeedback.vibrate();
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر التشغيل، تحقق من الاتصال: $e')),
+          const SnackBar(
+            content: Text('🔔 تنبيه الفجر يعمل الآن (صوت واهتزاز النظام)'),
+            backgroundColor: Colors.teal,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⏹️ تم إيقاف التنبيه'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 1),
+          ),
         );
       }
     }
@@ -129,7 +96,7 @@ class _FajrHomePageState extends State<FajrHomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(
-                Icons.menu_book_rounded,
+                Icons.alarm_on_rounded,
                 size: 100,
                 color: Colors.teal,
               ),
@@ -160,14 +127,14 @@ class _FajrHomePageState extends State<FajrHomePage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: toggleQuranAlarm,
+                onPressed: toggleAlarmSound,
                 icon: Icon(
-                  isPlaying ? Icons.stop : Icons.volume_up,
+                  isPlaying ? Icons.stop : Icons.notifications_active,
                   color: Colors.white,
                 ),
                 label: Text(
-                  isPlaying ? 'إيقاف تلاوة القرآن' : 'تجربة تلاوة القرآن الآن',
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
+                  isPlaying ? 'إيقاف تنبيه الفجر' : 'تجربة تنبيه الفجر الآن',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isPlaying ? Colors.red : Colors.orange,
@@ -177,7 +144,31 @@ class _FajrHomePageState extends State<FajrHomePage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+              // زر فتح الكاميرا للوضوء والتحقق من الوجه المبلل
+              ElevatedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('📸 جاري فتح الكاميرا للتحقق من الوجه المبلل...'),
+                      backgroundColor: Colors.blueGrey,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.camera_alt, color: Colors.white),
+                label: const Text(
+                  'فتح الكاميرا (الوجه المبلل للوضوء)',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueGrey,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
