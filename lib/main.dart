@@ -66,9 +66,11 @@ class _FajrHomePageState extends State<FajrHomePage> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('حدث خطأ أثناء تشغيل الصوت')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حدث خطأ أثناء تشغيل الصوت')),
+        );
+      }
     }
   }
 
@@ -76,12 +78,6 @@ class _FajrHomePageState extends State<FajrHomePage> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: alarmTime,
-      builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: child!,
-        );
-      },
     );
     if (picked != null && picked != alarmTime) {
       setState(() {
