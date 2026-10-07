@@ -29,6 +29,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool isAlarmActive = true;
+  TimeOfDay alarmTime = const TimeOfDay(hour: 4, minute: 30);
+
+  // دالة اختيار الوقت
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: alarmTime,
+    );
+    if (picked != null && picked != alarmTime) {
+      setState(() {
+        alarmTime = picked;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +65,33 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.teal,
             ),
             const SizedBox(height: 20),
-            const Text(
-              'موعد منبه الفجر',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            Text(
+              'وقت المنبه: ${alarmTime.format(context)}',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () => _selectTime(context),
+              icon: const Icon(Icons.timer),
+              label: const Text('تغيير وقت المنبه'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 30),
+            SwitchListTile(
+              title: const Text(
+                'تفعيل المنبه',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+              value: isAlarmActive,
+              activeColor: Colors.teal,
+              onChanged: (bool value) {
+                setState(() {
+                  isAlarmActive = value;
+                });
+              },
             ),
           ],
         ),
